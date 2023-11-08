@@ -1,8 +1,3 @@
-# This file is for testing some relevant functions
-# Ignore this
-
-
-# netup - A function 
 netup <- function(d) {
   # Check if the d has at least 2 elements 
   if (length(d) < 2) {
@@ -40,7 +35,6 @@ netup <- function(d) {
   return(network)
 }
 
-# Forward Propagation
 forward <- function(nn, inp){
   h <- nn$h; w <- nn$W; b <- nn$b
   h[[1]] <- inp
@@ -51,15 +45,5 @@ forward <- function(nn, inp){
   nn
 }
 
-# Testing of netup and forward function
-# netup
 nn <- netup(c(4,8,7,3))
-
-# forward propagation
-# checked the calculation for h[1,2] value => h1 at level 2
-print(nn$b)
-print("##")
-print(nn$W[[1]])
-print("##")
 nn <- forward(nn, c(5.1, 3.5, 1.4, 0.2))
-print(nn$h)
