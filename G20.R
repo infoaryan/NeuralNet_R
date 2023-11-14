@@ -21,10 +21,10 @@ netup <- function(d) {
     
     if(l != length(d)){
       # Initialize weight matrix W[[l]] with random values from U(0, 0.2)
-      W[[l]] <- matrix(runif(d[l] * d[l + 1], 0, 0.2), nrow = d[l], ncol = d[l + 1])
+      W[[l]] <- matrix(runif(d[l + 1] * d[l], 0, 0.2), nrow = d[l+1], ncol = d[l])
       
       # Initialize offset vector b[[l]] with random values from U(0, 0.2)
-      b[[l]] <- runif(d[l + 1], 0, 0.2)
+      b[[l]] <- matrix(runif(d[l + 1], 0, 0.2), nrow = d[l+1])
     }
   }
   
@@ -37,13 +37,14 @@ netup <- function(d) {
 
 forward <- function(nn, inp){
   h <- nn$h; w <- nn$W; b <- nn$b
-  h[[1]] <- inp
+  h[[1]] <- t(inp)
   for(i in 1:(length(h)-1)){
-    h[[i+1]] <- apply(t(w[[i]])%*%h[[i]] + b[[i]], 1, function(x){ max(0,x) })
+    h[[i+1]] <- apply(w[[i]]%*%h[[i]] + b[[i]], 1:2, function(x){ max(0,x) })
   }
   nn$h <- h
   nn
 }
 
-nn <- netup(c(4,8,7,3))
-nn <- forward(nn, c(5.1, 3.5, 1.4, 0.2))
+nn <- netup(c(4,2,3))
+inp <- matrix(c(5.1, 3.5, 1.4, 0.2), nrow=1)
+nn <- forward(nn, inp)
