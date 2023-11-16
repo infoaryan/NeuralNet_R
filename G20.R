@@ -1,11 +1,11 @@
 netup <- function(d) {
   # Check if the d has at least 2 elements 
   if (length(d) < 2) {
-    stop("Should have more than 2 length")
+    stop("A neural network should have at least 1 hidden layer.")
   }
   
   # Initialize the network as a list
-  network <- list()
+  nn <- list()
   
   # Initialize the lists for nodes, weights, and bias
   h <- list()
@@ -28,11 +28,11 @@ netup <- function(d) {
     }
   }
   
-  network$h <- h
-  network$W <- W
-  network$b <- b
+  nn$h <- h
+  nn$W <- W
+  nn$b <- b
   
-  return(network)
+  return(nn)
 }
 
 forward <- function(nn, inp) {
@@ -44,31 +44,19 @@ forward <- function(nn, inp) {
                       function(x){ x + b[[i]] })
     h[[i+1]] <- apply(h[[i+1]], 1:2,
                       function(x){ max(0,x) })
-    #h[[i+1]] <- apply(W[[i]]%*%h[[i]] + b[[i]], 1:2, function(x){ max(0,x) })
   }
   nn$h <- h
   return(nn)
 }
 
-####
+
 # Function to perform backward pass and update weights and biases
 
 backward <- function(nn_forward, k_forward) {
   
-  # for testing
-  #k_forward = k_item
-  # backward(nn_forward, k_item)
-  #k_forward = k_item
-  
-  
-  
   h <- nn_forward$h; W <- nn_forward$W; b <- nn_forward$b
   L <- length(h); L
   k <- k_forward[,1]
-  #factor_labels <- factor(k)
-  # Perform one-hot encoding using model.matrix
-  #one_hot_matrix <- model.matrix(~factor_labels - 1)
-  #one_hot_matrix <- matrix(one_hot_matrix, ncol = ncol(one_hot_matrix), nrow = nrow(one_hot_matrix))
 
   # initialize derivatives
   dh <- vector("list", length = L); dh
@@ -83,8 +71,6 @@ backward <- function(nn_forward, k_forward) {
       dh_L[k,] <-  dh_L[k,] - 1; dh_L
       dh[[l]] <- dh_L
       
-      #temp = exp(h[[l]]) / colSums(exp(h[[l]]))
-      #temp[1,] * (0 - temp[3,])
     }
     else{
       d_l_plus_1 <- dh[[l+1]]
@@ -124,16 +110,8 @@ subtract_lists_elementwise <- function(list1, list2) {
   return(result_list)
 }
 
-
 # Training function
 train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
-  
-  # for testing
-  #inp = inp_training
-  #k = k_training
-  #subset_size = 10
-  #nstep = 1000
-  #eta = 0.01
 
   set.seed(2)
   loss_values <- c()
@@ -190,11 +168,22 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
     if (step %% 1000 == 0) {
      cat("Step:", step, "  Loss:", loss, "\n")
     }
-    
-    
   }
   
   return(nn)
+}
+
+# Function generatiung a confusion matrix
+cnf_generator <- function(k_pred, k_actual){
+  confusion_matrix <- matrix(0, nrow=3, ncol=3)
+  sample_size <- length(k_pred)
+  
+  for(i in 1:sample_size){
+    pred_val <- k_pred[i]; actual_val <- k_actual[i]
+    confusion_matrix[pred_val, actual_val] <- confusion_matrix[pred_val, actual_val] + 1
+  }
+  
+  confusion_matrix
 }
 
 # Extract dependent variables: inp
@@ -217,45 +206,31 @@ nn_trained <- train(nn, inp_training, k_training,
 
 nn_trained
 
-############## the code below this point is not complete but can be used while we debug ########
-
 # Test how well training set classified data
-k_hat <- k_training * 0 # initialize prediction vector
+k_hat_training <- k_training * 0 # initialize prediction vector
+L <- length(nn_trained$h); L
 for (i in 1:nrow(inp_training)){
-  nn_forward_trained <- forward(nn_trained, matrix(inp_training[i,], nrow = 1))
-  
+  nn_trained_i <- forward(nn_trained, matrix(inp_training[i,], nrow = 1))
+  # Isolate final layer
+  final_layer <- nn_trained_i$h[[L]]
+  k_hat_training[i] <- which.max(final_layer)
 }
-nn_forward_trained <- forward(nn_trained, inp_training)
+k_hat_training
 
-nn_forward_trained$h
+# Test how well the trained nn will perform on the test data
+k_hat_test <- k_testing * 0 # initialize prediction vector
+L <- length(nn_trained$h); L
+for (i in 1:nrow(inp_testing)){
+  nn_trained_i <- forward(nn_trained, matrix(inp_testing[i,], nrow = 1))
+  # Isolate final layer
+  final_layer <- nn_trained_i$h[[L]]
+  k_hat_test[i] <- which.max(final_layer)
+}
 
+# Confusion matrix for training set
+cnf_generator(k_hat_training, k_training)
 
+# Confusion matrix for testing set
+cnf_generator(k_hat_test, k_testing)
 
-# temp for testing ######
-#nn <- netup(c(4,8,7,3))
-nn <- netup(c(4,2,2,3))
-#inp <- matrix(c(5.1, 3.5, 1.4, 0.2), nrow=1)
-#inp <- matrix(c(1,2,3,4,
-#               5,6,7,8), nrow=2)
-inp <- as.matrix(iris[, 1:4]); inp
-k <- matrix(as.numeric(iris$Species), ncol=1); k
-subset_size = 10
-#subset_size = 3
-eta = 0.1
-nstep = 10000
-#nstep = 10
-
-
-
-#nn <- netup(c(4,8,7,3))
-nn <- netup(c(4,4,4,2))
-#inp <- matrix(c(5.1, 3.5, 1.4, 0.2), nrow=1)
-inp <- matrix(c(5.1, 3.5, 1.4, 0.2,
-                5.1, 3.5, 1.4, 0.2), nrow=2)
-k <- matrix(c(1,2), nrow=1)
-nn_forward <- forward(nn, inp)
-nn_backward <- backward(nn_forward,k)
-
-subset_size = 2
-eta = 0.01
 
