@@ -1,3 +1,9 @@
+# Group 20
+# Student Names and UUN:  Aryan Verma(s2512060)
+#                         Chloe Stipinovich(s2614706)
+#                         Hrushikesh Vazurkar(s2550941)
+
+
 # INPUT:      d, a vector of numbers giving the number of nodes in
 #             each layer of a nn.
 # OUTPUT:     nn, a neural network with nodes, h, weights, W, and 
@@ -52,10 +58,8 @@ forward <- function(nn, inp) {
   inp <- matrix(inp[1,], nrow = 1) # ensure inp is the correct form
   h[[1]] <- t(inp) # feed inp values into first layer of nn
   for(i in 1:(length(h)-1)){
-    h[[i+1]] <- apply(W[[i]]%*%h[[i]], 2, 
-                      function(x){ x + b[[i]] }) # Calculate h^{l+1} = W^l %*% h^l + b^l
-    h[[i+1]] <- apply(h[[i+1]], 1:2,
-                      function(x){ max(0,x) }) # Apply the ReLU transformation
+    h[[i+1]] <- W[[i]]%*%h[[i]] + b[[i]] # Calculate h^{l+1} = W^l %*% h^l + b^l
+    h[[i+1]][h[[i+1]] < 0] <- 0 # Apply the ReLU transformation
   }
   nn$h <- h
   return(nn)
@@ -72,7 +76,7 @@ forward <- function(nn, inp) {
 backward <- function(nn, k) {
   
   h <- nn$h; W <- nn$W; b <- nn$b
-  L <- length(h); L # define the number of layers in nn
+  L <- length(h) # define the number of layers in nn
   k <- k[,1] # ensure k has the correct dimensions
 
   # initialize derivatives
@@ -84,7 +88,7 @@ backward <- function(nn, k) {
     if (l == L){ # final layer
       # Compute the derivative of the loss wrt the final layer
       dh_L <- exp(h[[l]]) / colSums(exp(h[[l]])) 
-      dh_L[k,] <-  dh_L[k,] - 1; dh_L
+      dh_L[k,] <-  dh_L[k,] - 1
       dh[[l]] <- dh_L
       
     }
@@ -93,9 +97,9 @@ backward <- function(nn, k) {
       d_l_plus_1[h[[l+1]] < 0] <- 0 # set dh values to 0 where h values are <0
       #d_l_plus_1 <- apply(dh[[l+1]], 1:2,
       #                    function(x){ max(0,x) })
-      dh[[l]] <- t(W[[l]]) %*% d_l_plus_1; dh # derivative of loss wrt h
-      db[[l]] <- d_l_plus_1; db # derivative of loss wrt b
-      dW[[l]] <- d_l_plus_1 %*% t(h[[l]]); dW # derivative of loss wrt W
+      dh[[l]] <- t(W[[l]]) %*% d_l_plus_1 # derivative of loss wrt h
+      db[[l]] <- d_l_plus_1 # derivative of loss wrt b
+      dW[[l]] <- d_l_plus_1 %*% t(h[[l]]) # derivative of loss wrt W
     }
   }
   
@@ -135,7 +139,6 @@ subtract_lists_elementwise <- function(list1, list2) {
 train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
 
   loss_values <- c()
-  loss <- 0
   
   for (step in 1:nstep) {
     # Randomly sample a small subset of the data
@@ -160,19 +163,18 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
       }
       
       # Isolate final layer
-      L <- length(nn_forward$h); L
+      L <- length(nn_forward$h)
       final_layer <- nn_forward$h[[L]]
       
       # Compute probabilities
       p <- exp(final_layer)/ colSums(exp(final_layer))
-      if (all.equal(colSums(p), 1) == FALSE){
+      if (!all.equal(colSums(p), 1)){
         print("Something is wrong; your probabilities do not sum to 1.")
       }
       
       # Store sum of negative log probability for the class of item
       subset_loss <- subset_loss - log(p[k_item,]) 
-      
-      #loss <- loss_function(k_subset, final_layer)
+  
     }
     
     loss = subset_loss/subset_size # Find the loss of the whole subset by taking the average of the cumulative loss
@@ -188,9 +190,10 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
     if (step %% 1000 == 0) {
      cat("Step:", step, "  Loss:", loss, "\n")
     }
-    loss_values <- c(loss_values, loss)
+    
   }
   
+  nn$loss_values <- loss_values
   return(nn)
 }
 
@@ -198,65 +201,95 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
 # OUTPUT:     
 # PURPOSE:    
 # Function generating a confusion matrix
-cnf_generator <- function(k_pred, k_actual){
+cnf_generator <- function(k_hat, k_true){
   confusion_matrix <- matrix(0, nrow=3, ncol=3)
-  sample_size <- length(k_pred)
+  sample_size <- length(k_hat)
   
   for(i in 1:sample_size){
-    pred_val <- k_pred[i]; actual_val <- k_actual[i]
+    pred_val <- k_hat[i]; actual_val <- k_true[i]
     confusion_matrix[pred_val, actual_val] <- confusion_matrix[pred_val, actual_val] + 1
   }
   
   confusion_matrix
 }
 
+# INPUT:      
+# OUTPUT:     
+# PURPOSE:    
+# Training function
+# function which finds the predicted class labels given 
+# some input values and a defined nn
+prediction_calcuator <- function(inp, nn){
+  k_hat <- list() # initialize predictions vector
+  L <- length(nn$h) # L = number of layers in nn
+  for (i in 1:nrow(inp)){
+    nn <- forward(nn, matrix(inp[i,], nrow = 1)) # pass inputs through nn
+    final_layer <- nn$h[[L]] # Isolate final layer
+    k_hat <- c(k_hat, which.max(final_layer)) # prediction = argmax of final layer
+  }
+  return(k_hat)
+}
+
+# INPUT:      
+# OUTPUT:     
+# PURPOSE:    
+# Training function
+# calculates the miss-classification rate given the true classes 
+# and the predicte values
+missclass_calculator <- function(k_hat, k_true){
+  differences <- k_hat != k_true # identify the differences
+  num_differences <- sum(differences) # count the differences
+  missclass <- num_differences / length(k_hat) # Calculate the proportion
+  return(missclass)
+}
+
 # Extract dependent variables: inp
-inp <- as.matrix(iris[, 1:4]); inp
+inp <- as.matrix(iris[, 1:4])
 
 # Extract class labels as numerics 1,2,3 for the three species
-k <- matrix(as.numeric(iris$Species), ncol=1); k
+k <- matrix(as.numeric(iris$Species), ncol=1)
 
 # Define training and testing sets
 test_indices <- seq(5, nrow(iris), by = 5)
-inp_training <- inp[-test_indices, ]; k_training <- k[-test_indices, ]
-inp_testing <- inp[test_indices, ]; k_testing <- k[test_indices, ]
+inp_train <- inp[-test_indices, ]
+k_train <- k[-test_indices, ]
+inp_test <- inp[test_indices, ]
+k_test <- k[test_indices, ]
 
 # Set the seed for pseudo-random number generation
-set.seed(4)
+set.seed(6)
 
+# Define number of nodes in each layer of nn
 nn <- netup(c(4,8,7,3))
 
-# Train Neural Net on training data
-nn_trained <- train(nn, inp_training, k_training,
+# Train nn on the training data
+nn_trained <- train(nn, inp_train, k_train,
                     eta = 0.01, subset_size = 10, nstep = 10000)
 
-nn_trained
+###### RESULTS ##########
 
-# Test how well training set classified data
-k_hat_training <- k_training * 0 # initialize prediction vector
-L <- length(nn_trained$h); L
-for (i in 1:nrow(inp_training)){
-  nn_trained_i <- forward(nn_trained, matrix(inp_training[i,], nrow = 1))
-  # Isolate final layer
-  final_layer <- nn_trained_i$h[[L]]
-  k_hat_training[i] <- which.max(final_layer)
-}
-k_hat_training
+# misclassification rate pre-processing on the training data
+k_hat <- prediction_calcuator(inp_train, nn)
+missclass_pre_train <- missclass_calculator(k_hat, k_train)
+missclass_pre_train
 
-# Test how well the trained nn will perform on the test data
-k_hat_test <- k_testing * 0 # initialize prediction vector
-L <- length(nn_trained$h); L
-for (i in 1:nrow(inp_testing)){
-  nn_trained_i <- forward(nn_trained, matrix(inp_testing[i,], nrow = 1))
-  # Isolate final layer
-  final_layer <- nn_trained_i$h[[L]]
-  k_hat_test[i] <- which.max(final_layer)
-}
+# misclassification rate post-processing on the training data
+k_hat <- prediction_calcuator(inp_train, nn_trained)
+missclass_post_train <- missclass_calculator(k_hat, k_train)
+missclass_post_train
+
+# As seen above, the misclassification rate from the pre trained 
+# nn to the post trained nn decreased from 0.66 to 0.025.
+
+# misclassification rate on the testing data
+k_hat <- prediction_calcuator(inp_test, nn_trained)
+missclass_test <- missclass_calculator(k_hat, k_test)
+missclass_test
+
+# There are no misclassification in the testing data
 
 # Confusion matrix for training set
-cnf_generator(k_hat_training, k_training)
+cnf_generator(k_hat_training, k_train)
 
 # Confusion matrix for testing set
-cnf_generator(k_hat_test, k_testing)
-
-
+cnf_generator(k_hat_test, k_test)
