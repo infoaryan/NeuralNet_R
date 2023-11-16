@@ -53,10 +53,18 @@ forward <- function(nn, inp) {
 ####
 # Function to perform backward pass and update weights and biases
 
-backward <- function(nn, k) {
-  h <- nn$h; W <- nn$W; b <- nn$b
+backward <- function(nn_forward, k_forward) {
+  
+  # for testing
+  #k_forward = k_item
+  # backward(nn_forward, k_item)
+  #k_forward = k_item
+  
+  
+  
+  h <- nn_forward$h; W <- nn_forward$W; b <- nn_forward$b
   L <- length(h); L
-  k<- k[,1]
+  k <- k_forward[,1]
   #factor_labels <- factor(k)
   # Perform one-hot encoding using model.matrix
   #one_hot_matrix <- model.matrix(~factor_labels - 1)
@@ -70,34 +78,33 @@ backward <- function(nn, k) {
   for (l in L:1){
     if (l == L){
       # i = 3
+      #dh_L <- matrix()
       dh_L <- exp(h[[l]]) / colSums(exp(h[[l]])); dh_L
       dh_L[k,] <-  dh_L[k,] - 1; dh_L
       dh[[l]] <- dh_L
+      
+      #temp = exp(h[[l]]) / colSums(exp(h[[l]]))
+      #temp[1,] * (0 - temp[3,])
     }
     else{
-      d_l_plus_1 <- apply(dh[[l+1]], 1:2,
-                          function(x){ max(0,x) })
+      d_l_plus_1 <- dh[[l+1]]
+      d_l_plus_1[h[[l+1]] < 0] <- 0
+      #d_l_plus_1 <- apply(dh[[l+1]], 1:2,
+      #                    function(x){ max(0,x) })
       dh[[l]] <- t(W[[l]]) %*% d_l_plus_1; dh
       db[[l]] <- d_l_plus_1; db
       dW[[l]] <- d_l_plus_1 %*% t(h[[l]]); dW
     }
   }
   
-  network <- list()
-  network$h <- h
-  network$W <- W
-  network$b <- b
-  network$dh <- dh
-  network$dW <- dW
-  network$db <- db
-  return(network)
+  nn_forward$dh <- dh
+  nn_forward$dW <- dW
+  nn_forward$db <- db
+  return(nn_forward)
   
 }
 
-#loss_function <- function(k_subset, h[[length(h)]]){
-  
-#}
-
+# Function which performs matrix summation in a list of matrices
 sum_lists_elementwise <- function(list1, list2) {
   
   result_list <- list() # empty list for results
@@ -107,6 +114,7 @@ sum_lists_elementwise <- function(list1, list2) {
   return(result_list)
 }
 
+# Function which performs matrix summation in a list of matrices
 subtract_lists_elementwise <- function(list1, list2) {
   
   result_list <- list() # empty list for results
@@ -119,6 +127,13 @@ subtract_lists_elementwise <- function(list1, list2) {
 
 # Training function
 train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
+  
+  # for testing
+  #inp = inp_training
+  #k = k_training
+  #subset_size = 10
+  #nstep = 1000
+  #eta = 0.01
 
   set.seed(2)
   loss_values <- c()
@@ -137,13 +152,11 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
       k_item <- matrix(k_subset[item], nrow = 1)
       nn_forward <- forward(nn, inp_item)
       nn_backward <- backward(nn_forward, k_item)
-      if (item == 1) {
-        #print(item)
+      if (item == 1) { # initialize cumulative weights and biases
         cum_dW <- nn_backward$dW
         cum_db <- nn_backward$db
       }
-      else {
-        #print(item)
+      else { # add current weights to cumulative weights and biases
         cum_dW <- sum_lists_elementwise(cum_dW, nn_backward$dW)
         cum_db <- sum_lists_elementwise(cum_db, nn_backward$db)
       }
@@ -174,9 +187,11 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
     nn$b <- subtract_lists_elementwise(nn$b, lapply(db_average, function(x){x * eta})) # update the bias of the nn
     
     # Print the loss for every 1000 steps
-    if (step %% 100 == 0) {
+    if (step %% 1000 == 0) {
      cat("Step:", step, "  Loss:", loss, "\n")
     }
+    
+    
   }
   
   return(nn)
@@ -198,7 +213,7 @@ nn <- netup(c(4,8,7,3))
 
 # Train Neural Net on training data
 nn_trained <- train(nn, inp_training, k_training,
-                    eta = 0.01, subset_size = 10, nstep = 1000)
+                    eta = 0.01, subset_size = 10, nstep = 10000)
 
 nn_trained
 
