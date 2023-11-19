@@ -1,16 +1,79 @@
-# Group 20
-# Student Names and UUN:  Aryan Verma(s2512060)
-#                         Chloe Stipinovich(s2614706)
-#                         Hrushikesh Vazurkar(s2550941)
+# Student Names and UUN:  Aryan Verma (s2512060), Chloe Stipinovich (s2614706), Hrushikesh Vazurkar (s2550941)
+# https://github.com/infoaryan/NeuralNet_R
 
+# CONTRIBUTIONS:
+# Aryan completed the netup function and ensured sound logic for derivative calculations.
+# Chloe completed the backward and train functions, and the commenting.
+# Hrushikesh completed the forward function and the results formulation.
+# We all contributed towards debugging and ensuring sound results,
+# all team members contributed towards the assignment fairly.
+
+# INTRODUCTION:
+# Neural networks (nn) are a branch of machine learning used to train a model
+# to fit some data. A nn is comprised of interconnected nodes (h) which are 
+# organized into layers, weights (W) connecting these nodes, and offset 
+# values (b). 
+
+# The assignment consisted of a classification task in which numeric variables
+# are used to predict what class an observation belongs to. The input layer
+# thus has a node for each input variable and the output layer (L) has a node
+# for each possible class. The default  constructed nn has 4 input nodes, 3 
+# output nodes and two hdden layers of size 8 and 7. The node values are 
+# calculated as a linear combination of the nodes in the previous layer and a 
+# non-linear transformation of the results, known as an activation fucntion. 
+# The ReLU activation function was utilised in this assignment defined as:
+#           h^{l+1}_j = max(0, W^{l}_j h^{l} + b^{l}_j)
+# In the notatin above, the superscript refers to the layer of the nn and the 
+# subscript refers to the position of the node in that layer. 
+# The probability of a class was then defined according to the softmax function:
+#           p_k = exp(h^{L}_k) / sum(exp(h^{L}_j))
+
+# The model was trained by first defining a Loss Function:
+#           Loss = - sum(log(p_k_i)) / n
+# Where n is the number of training data points. We then adjust the parameters
+# of the nn (the W and b) to minimize this Loss Function. We note that the
+# number of parameters in the model far outweighed the number of data points, 
+# and so stochastic gradient descent (SGD) was used in the training of the 
+# model. To achieve this, we randomly select a small subset of data, a 
+# minibatch (mb), of the training data. We run these data through the defined
+# nn and update the parameters according to the average gradient of the Loss 
+# Function over the mb points.
+
+# The basic procedure used to train the nn is as follows:
+# Step 1: Define the training and testing sets.
+# Step 2: Randomly initialize the parameters.
+# Step 3: Complete the following steps nstep times:
+#           > Randomly select a mb from the training data.
+#           > For each data point (x_i) with corresponding class (k_i) in mb:
+#               - Forward pass x_i through the nn to find all h values.
+#               - Compute the derivative of the loss (dLoss) for k_i wrt W and b, using the chain rule:
+#                   First compute dLoss_i wrt h^{L}
+#                   Then compute dLoss_i wrt all other layers of h by working backwards
+#                   Finally, compute the dLoss_i wrt the W and b.
+#           > Calculate the average derivative of the loss for the mb.
+#           > Update the parameters using the average derivatives:
+#           > W = W - eta * dW
+#           > b = b - eta * db (where eta is the learning rate)
+
+# For the Iris data set used, the input variables (x_i) were the Sepal Length, 
+# Sepal Width Petal Length and Petal Width of flowers and the classes (k) 
+# were the three different species (1) setosa, (2) versicolor and 
+# (3) virginica of the flowers encoded into numerical values 1, 2 and 3.
+
+# The trained model was then tested to see how well it performed on the 
+# training set as well as how well it performed on unseen data (the test set).
+# The misclassification rate (proportion misclassified) was calculated and 
+# the results can be seen below.
+
+######################################################################################
 
 # INPUT:      d, a vector of numbers giving the number of nodes in
 #             each layer of a nn.
 # OUTPUT:     nn, a neural network with nodes, h, weights, W, and 
-#             bias values b. 
+#             offset values b. 
 # PURPOSE:    Construct and initialize a nn with nodes, h, weights, W, and
-#             bias values b. The nodes are initialized to 0 and the W and b 
-#             values are initialized with elements drawn from a Uniform(0, 0.2).
+#             offset values b. The nodes are initialized to 0 and the W and b 
+#             values are initialized with draws from a Uniform(0, 0.2).
 netup <- function(d) {
   
   # Check that the nn has at least 1 hidden layer
@@ -21,12 +84,12 @@ netup <- function(d) {
   # Initialize the network as a list
   nn <- list()
   
-  # Initialize the lists for nodes, weights, and bias
+  # Initialize the lists for nodes, weights, and offset
   h <- list(); W <- list(); b <- list()
   
   # For each layer of the nn:
   #   Initialize the values of the nodes, h, to 0
-  #   Initialize the values of the weights, W, and biases, b, to be
+  #   Initialize the values of the weights, W, and offsets, b, to be
   #   Uniform(0, 0.2)
   for (l in 1:(length(d))) {
     
@@ -70,9 +133,9 @@ forward <- function(nn, inp) {
 #             nn.
 # OUTPUT:     nn, the same nn which was given as an input but with added
 #             elements, dh, dW and db the derivative of the Loss Function wrt
-#             the nodes, Weights and biases respectively.
+#             the nodes, Weights and offsets respectively.
 # PURPOSE:    To perform back-propagation by calculating the derivative of the Loss
-#             Function wrt the nodes, Weights, and biases.
+#             Function wrt the nodes, Weights, and offsets.
 backward <- function(nn, k) {
   
   h <- nn$h; W <- nn$W; b <- nn$b
@@ -109,57 +172,75 @@ backward <- function(nn, k) {
   return(nn)
 }
 
-# INPUT:      
-# OUTPUT:     
-# PURPOSE:    
-# Function which performs matrix summation in a list of matrices
-sum_lists_elementwise <- function(list1, list2) {
-  
+# INPUT:      list 1, a list of matrices from train
+#             list 2, a list of matrices from train
+#             operator, the operation to be applied either 'add' or 'subtract' 
+# OUTPUT:     result_list, a list of matrices
+# PURPOSE:    This function performs elementwise matrix addition/subtraction
+#             on a list of matrices
+elementwise_manipulation <- function(list1, list2, operator) {
   result_list <- list() # empty list for results
-  for (i in 1:length(list1)) {
-    result_list[[i]] <- list1[[i]] + list2[[i]]
+
+  # Add the elements of the matrices in list1 and list2
+  if (operator == 'add'){
+    for (i in 1:length(list1)) {
+      result_list[[i]] <- list1[[i]] + list2[[i]] 
+    }
+  }
+
+  # Subtract the elements of the matrix list2 from list1
+  if (operator == 'subtract'){
+    for (i in 1:length(list1)) {
+      result_list[[i]] <- list1[[i]] - list2[[i]] # subtract matrices elementwise
+    }
   }
   return(result_list)
 }
 
-# Function which performs matrix summation in a list of matrices
-subtract_lists_elementwise <- function(list1, list2) {
+# INPUT:      nn, a neural network defined by netup
+#             inp, the input data for training from 
+#             k, the corresponding true class values
+#             eta, the learing rate with default 0.01
+#             mb, the mini-batch size with default 10
+#             nstep, the number of iterations with defualt 10000
+# OUTPUT:     nn, a trained neural network
+# PURPOSE:    This function trains a nn with ReLU activation functions at each
+#             node with a softmax activation applied to the final node,
+#             and a negative log probability loss function. The function uses
+#             stochastic gradient decent for training.
+train <- function(nn, inp, k, eta = 0.01, mb = 10, nstep = 10000) {
   
-  result_list <- list() # empty list for results
-  for (i in 1:length(list1)) {
-    result_list[[i]] <- list1[[i]] - list2[[i]]
-  }
-  return(result_list)
-}
-
-# INPUT:      
-# OUTPUT:     
-# PURPOSE:    
-# Training function
-train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
-
+  # initialize loss value
   loss_values <- c()
   
   for (step in 1:nstep) {
+
     # Randomly sample a small subset of the data
-    indices <- sample(1:nrow(inp), subset_size, replace = TRUE)
-    inp_subset <- inp[indices, ]
-    k_subset <- k[indices]
+    indices <- sample(1:nrow(inp), mb, replace = TRUE)
+    inp_mb <- inp[indices, ]
+    k_mb <- k[indices]
     
-    subset_loss <- 0 # initialize
+    # Initialize subset loss
+    mb_loss <- 0 
     
-    for (item in 1:subset_size){
-      inp_item <- matrix(inp_subset[item,], nrow = 1)
-      k_item <- matrix(k_subset[item], nrow = 1)
+    for (item in 1:mb){
+      
+      # Isolate one data point
+      inp_item <- matrix(inp_mb[item,], nrow = 1)
+      k_item <- matrix(k_mb[item], nrow = 1)
+
+      # Pass data point through the forward and backward function
       nn_forward <- forward(nn, inp_item)
       nn_backward <- backward(nn_forward, k_item)
-      if (item == 1) { # initialize cumulative weights and biases
+
+      # Add derivatives to a stored cumulative value
+      if (item == 1) { # initialize cumulative weights and offsets
         cum_dW <- nn_backward$dW
         cum_db <- nn_backward$db
       }
-      else { # add current weights to cumulative weights and biases
-        cum_dW <- sum_lists_elementwise(cum_dW, nn_backward$dW)
-        cum_db <- sum_lists_elementwise(cum_db, nn_backward$db)
+      else { # add current weights to cumulative weights and offsets
+        cum_dW <- elementwise_manipulation(cum_dW, nn_backward$dW, 'add')
+        cum_db <- elementwise_manipulation(cum_db, nn_backward$db, 'add')
       }
       
       # Isolate final layer
@@ -173,55 +254,60 @@ train <- function(nn, inp, k, eta = 0.01, subset_size = 10, nstep = 10000) {
       }
       
       # Store sum of negative log probability for the class of item
-      subset_loss <- subset_loss - log(p[k_item,]) 
-  
+      mb_loss <- mb_loss - log(p[k_item,]) 
     }
     
-    loss = subset_loss/subset_size # Find the loss of the whole subset by taking the average of the cumulative loss
-    loss_values <- c(loss_values, loss) # store this loss value
+    # Calculate the loss of the whole subset as the average
+    loss = mb_loss/mb 
+
+    # Store this mini batch loss value
+    loss_values <- c(loss_values, loss)
     
-    dW_average <- lapply(cum_dW, function(x){x/subset_size}) # find the average of the derivative wrt the weights
-    db_average <- lapply(cum_db, function(x){x/subset_size}) # find the average of the derivative wrt the bias
+    # Calculate the average of the derivative wrt the W and b
+    dW_average <- lapply(cum_dW, function(x){x/mb}) 
+    db_average <- lapply(cum_db, function(x){x/mb}) 
     
-    nn$W <- subtract_lists_elementwise(nn$W, lapply(dW_average, function(x){x * eta})) # update the weight of the nn
-    nn$b <- subtract_lists_elementwise(nn$b, lapply(db_average, function(x){x * eta})) # update the bias of the nn
-    
-    # Print the loss for every 1000 steps
-    if (step %% 1000 == 0) {
-     cat("Step:", step, "  Loss:", loss, "\n")
-    }
-    
+    # Update the W and b with the average of the derivatives wrt the W and b
+    # W = W - eta * dW
+    # b = b - eta * db
+    nn$W <- elementwise_manipulation(nn$W, lapply(dW_average, function(x){x * eta}), 'subtract') 
+    nn$b <- elementwise_manipulation(nn$b, lapply(db_average, function(x){x * eta}), 'subtract') 
   }
-  
-  nn$loss_values <- loss_values
   return(nn)
 }
 
-# INPUT:      
-# OUTPUT:     
-# PURPOSE:    
-# Function generating a confusion matrix
+# INPUT:      k_hat, vector of predicted class labels
+#             k_true, vector of true class labels
+# OUTPUT:     confusion_matrix, a confusion matrix of k_hat and k_true
+# PURPOSE:    Generating a confusion matrix given some predicted 
+#             and true class labels.
 cnf_generator <- function(k_hat, k_true){
-  confusion_matrix <- matrix(0, nrow=3, ncol=3)
-  sample_size <- length(k_hat)
-  
-  for(i in 1:sample_size){
-    pred_val <- k_hat[i]; actual_val <- k_true[i]
-    confusion_matrix[pred_val, actual_val] <- confusion_matrix[pred_val, actual_val] + 1
+
+  # Initialize matrix
+  cnf_matrix <- matrix(0, nrow=3, ncol=3)
+
+  for(i in 1:length(k_hat)){
+    pred_val <- k_hat[i]
+    actual_val <- k_true[i]
+    cnf_matrix[pred_val, actual_val] <- cnf_matrix[pred_val, actual_val] + 1
   }
   
-  confusion_matrix
+  return(cnf_matrix)
 }
 
-# INPUT:      
-# OUTPUT:     
-# PURPOSE:    
-# Training function
-# function which finds the predicted class labels given 
-# some input values and a defined nn
-prediction_calcuator <- function(inp, nn){
-  k_hat <- list() # initialize predictions vector
-  L <- length(nn$h) # L = number of layers in nn
+# INPUT:      inp, input variables
+#             nn, defined nn
+# OUTPUT:     k_hat, predicted class labels
+# PURPOSE:    Finds the predicted class labels given some input values
+#             and a defined nn
+prediction_calculator <- function(inp, nn){
+
+  # initialize predictions vector
+  k_hat <- c() 
+
+  # L = number of layers in nn
+  L <- length(nn$h) 
+
   for (i in 1:nrow(inp)){
     nn <- forward(nn, matrix(inp[i,], nrow = 1)) # pass inputs through nn
     final_layer <- nn$h[[L]] # Isolate final layer
@@ -230,16 +316,19 @@ prediction_calcuator <- function(inp, nn){
   return(k_hat)
 }
 
-# INPUT:      
-# OUTPUT:     
-# PURPOSE:    
-# Training function
-# calculates the miss-classification rate given the true classes 
-# and the predicte values
+# INPUT:      k_hat, vector of predicted class labels
+#             k_true, vector of true class labels
+# OUTPUT:     missclass, the misclassification raate
+# PURPOSE:    Calculates the miss-classification rate given the true classes 
+#             and the predicted values
 missclass_calculator <- function(k_hat, k_true){
-  differences <- k_hat != k_true # identify the differences
-  num_differences <- sum(differences) # count the differences
-  missclass <- num_differences / length(k_hat) # Calculate the proportion
+
+  # identify and count the differences
+  differences <- k_hat != k_true 
+  num_differences <- sum(differences) 
+
+  # Calculate the proportion
+  missclass <- num_differences / length(k_hat) 
   return(missclass)
 }
 
@@ -264,29 +353,29 @@ nn <- netup(c(4,8,7,3))
 
 # Train nn on the training data
 nn_trained <- train(nn, inp_train, k_train,
-                    eta = 0.01, subset_size = 10, nstep = 10000)
+                    eta = 0.01, mb = 10, nstep = 10000)
 
-###### RESULTS ##########
+# RESULTS:
 
 # misclassification rate pre-processing on the training data
-k_hat <- prediction_calcuator(inp_train, nn)
-missclass_pre_train <- missclass_calculator(k_hat, k_train)
+k_hat_pre_train <- prediction_calculator(inp_train, nn)
+missclass_pre_train <- missclass_calculator(k_hat_pre_train, k_train)
 missclass_pre_train
 
 # misclassification rate post-processing on the training data
-k_hat <- prediction_calcuator(inp_train, nn_trained)
-missclass_post_train <- missclass_calculator(k_hat, k_train)
+k_hat_training <- prediction_calculator(inp_train, nn_trained)
+missclass_post_train <- missclass_calculator(k_hat_training, k_train)
 missclass_post_train
 
 # As seen above, the misclassification rate from the pre trained 
 # nn to the post trained nn decreased from 0.66 to 0.025.
 
 # misclassification rate on the testing data
-k_hat <- prediction_calcuator(inp_test, nn_trained)
-missclass_test <- missclass_calculator(k_hat, k_test)
+k_hat_test <- prediction_calculator(inp_test, nn_trained)
+missclass_test <- missclass_calculator(k_hat_test, k_test)
 missclass_test
 
-# There are no misclassification in the testing data
+# There are no misclassification in the testing data.
 
 # Confusion matrix for training set
 cnf_generator(k_hat_training, k_train)
